@@ -47,22 +47,32 @@ Python bindings for the v4l2 userspace api in Linux 2.6.34
 # see linux/videodev2.h
 
 import ctypes
+import platform
 
 
+# See ioctl.h of your architecture for appropriate constants here.
+# This has been tested only on x86 and MIPS
 _IOC_NRBITS = 8
 _IOC_TYPEBITS = 8
-_IOC_SIZEBITS = 14
-_IOC_DIRBITS = 2
 
 _IOC_NRSHIFT = 0
 _IOC_TYPESHIFT = _IOC_NRSHIFT + _IOC_NRBITS
 _IOC_SIZESHIFT = _IOC_TYPESHIFT + _IOC_TYPEBITS
+
+if (platform.machine() == "mips"):
+    _IOC_NONE = 1
+    _IOC_READ = 2
+    _IOC_WRITE  = 4
+    _IOC_SIZEBITS = 13
+    _IOC_DIRBITS = 3
+else:
+    _IOC_NONE = 0
+    _IOC_WRITE = 1
+    _IOC_READ  = 2
+    _IOC_SIZEBITS = 14
+    _IOC_DIRBITS = 2
+
 _IOC_DIRSHIFT = _IOC_SIZESHIFT + _IOC_SIZEBITS
-
-_IOC_NONE = 0
-_IOC_WRITE = 1
-_IOC_READ  = 2
-
 
 def _IOC(dir_, type_, nr, size):
     return (
@@ -70,7 +80,6 @@ def _IOC(dir_, type_, nr, size):
         ctypes.c_int32(ord(type_) << _IOC_TYPESHIFT).value |
         ctypes.c_int32(nr << _IOC_NRSHIFT).value |
         ctypes.c_int32(size << _IOC_SIZESHIFT).value)
-
 
 def _IOC_TYPECHECK(t):
     return ctypes.sizeof(t)
@@ -86,7 +95,6 @@ def _IOW(type_, nr, size):
 
 def _IOR(type_, nr, size):
     return _IOC(_IOC_READ, type_, nr, _IOC_TYPECHECK(size))
-
 
 def _IOWR(type_, nr, size):
     return _IOC(_IOC_READ | _IOC_WRITE, type_, nr, _IOC_TYPECHECK(size))
@@ -196,7 +204,7 @@ v4l2_buf_type = enum
     V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
     V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
     V4L2_BUF_TYPE_PRIVATE,
-) = range(1, 11) + [0x80]
+) = list(range(1, 11)) + [0x80]
 
 
 v4l2_ctrl_type = enum
@@ -247,7 +255,7 @@ v4l2_priority = enum
     V4L2_PRIORITY_INTERACTIVE,
     V4L2_PRIORITY_RECORD,
     V4L2_PRIORITY_DEFAULT,
-) = range(0, 4) + [2]
+) = list(range(0, 4)) + [2]
 
 
 class v4l2_rect(ctypes.Structure):
@@ -272,12 +280,13 @@ class v4l2_fract(ctypes.Structure):
 
 class v4l2_capability(ctypes.Structure):
     _fields_ = [
-        ('driver', ctypes.c_char * 16),
-        ('card', ctypes.c_char * 32),
-        ('bus_info', ctypes.c_char * 32),
+        ('driver', ctypes.c_uint8 * 16),
+        ('card', ctypes.c_uint8 * 32),
+        ('bus_info', ctypes.c_uint8 * 32),
         ('version', ctypes.c_uint32),
         ('capabilities', ctypes.c_uint32),
-        ('reserved', ctypes.c_uint32 * 4),
+        ('device_caps', ctypes.c_uint32),
+        ('reserved', ctypes.c_uint32 * 3),
     ]
 
 
